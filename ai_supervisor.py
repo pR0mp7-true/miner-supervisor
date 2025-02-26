@@ -7,7 +7,7 @@ import sys
 
 # 🔥 Configuration
 MINER_CMD = os.path.expanduser("~/miner-supervisor/xmrig-bin")
-WALLET_ADDRESS = "47mV652Zp3XHKvemVSWLDG5dCqnWteamwhRRSuVSJ5peEUaPKMHkE3jhzsobGQvJE4SsoqPBUyw9C1fSQE8Y6FY216jnfHN"  # Updated Wallet Address
+WALLET_ADDRESS = "47mV652Zp3XHKvemVSWLDG5..."  # Replace with your actual wallet
 CONFIG_FILE = os.path.expanduser("~/miner-supervisor/config.json")
 POOL_LIST_API = "https://moneroworld.com/hosts.txt"
 POOL_API = f"https://xmrpool.eu/api/miner/{WALLET_ADDRESS}"
@@ -19,11 +19,7 @@ GITHUB_SCRIPT_URL = "https://raw.githubusercontent.com/pR0mp7-true/miner-supervi
 
 # ✅ Validate Wallet
 def is_valid_wallet(wallet):
-    if re.match(r"^[48][0-9A-Za-z]{94}$", wallet):
-        return True
-    else:
-        print(f"[❌] Invalid Wallet! Length: {len(wallet)}, Expected: 95")
-        return False
+    return re.match(r"^[48][0-9A-Za-z]{94}$", wallet) is not None
 
 if not is_valid_wallet(WALLET_ADDRESS):
     print("[❌] Invalid Wallet! Check your config.")
@@ -36,11 +32,11 @@ def update_script():
     try:
         response = requests.get(GITHUB_SCRIPT_URL, timeout=5)
         if response.status_code == 200:
-            script_path = os.path.abspath(__file__)
+            script_path = os.path.abspath(__file__)  # Get current script path
             with open(script_path, "w") as f:
-                f.write(response.text)
+                f.write(response.text)  # Overwrite the script with new content
             print("[✅] AI Supervisor updated! Restarting...")
-            os.execv(sys.executable, ["python"] + sys.argv)
+            os.execv(sys.executable, ["python"] + sys.argv)  # Restart script
     except requests.RequestException:
         print("[⚠️] Auto-update failed. Continuing...")
 
