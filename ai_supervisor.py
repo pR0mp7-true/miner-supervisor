@@ -7,7 +7,7 @@ import sys
 
 # 🔥 Configuration
 MINER_CMD = os.path.expanduser("~/miner-supervisor/xmrig-bin")
-WALLET_ADDRESS = "47mV652Zp3XHKvemVSWLDG5..."  # Replace with your actual wallet
+WALLET_ADDRESS = "47mV652Zp3XHKvemVSWLDG5dCqnWteamwhRRSuVSJ5peEUaPKMHkE3jhzsobGQvJE4SsoqPBUyw9C1fSQE8Y6FY216jnfHN"  # Replace after successfully withdrawn
 CONFIG_FILE = os.path.expanduser("~/miner-supervisor/config.json")
 POOL_LIST_API = "https://moneroworld.com/hosts.txt"
 POOL_API = f"https://xmrpool.eu/api/miner/{WALLET_ADDRESS}"
@@ -19,12 +19,13 @@ GITHUB_SCRIPT_URL = "https://raw.githubusercontent.com/pR0mp7-true/miner-supervi
 
 # ✅ Validate Wallet
 def is_valid_wallet(wallet):
-    # Strip spaces and validate wallet address
     wallet = wallet.strip()  # Remove any surrounding spaces
+    print(f"Validating Wallet: '{wallet}'")  # Debugging output
     return re.match(r"^[48][0-9A-Za-z]{94}$", wallet) is not None
 
+# Checking Wallet Address
 if not is_valid_wallet(WALLET_ADDRESS):
-    print(f"[❌] Invalid Wallet: '{WALLET_ADDRESS}'")
+    print(f"[❌] Invalid Wallet: '{WALLET_ADDRESS}'")  # Show the wallet being validated
     exit(1)
 
 print("[✅] Wallet is valid! Starting AI Supervisor...")
@@ -69,14 +70,11 @@ def fetch_new_pool():
 # 🚀 Start Mining
 def start_mining():
     global CURRENT_POOL
-    print(f"[🚀] Starting mining with wallet: {WALLET_ADDRESS} on pool {CURRENT_POOL}")
-    os.system(f"{MINER_CMD} -o {CURRENT_POOL} -u {WALLET_ADDRESS} -p x")
 
-# Main Program Execution
-def main():
-    update_script()  # Check for auto-updates first
-    fetch_new_pool()  # Update pool if necessary
-    start_mining()  # Start mining
+    print(f"[🚀] Starting mining with wallet: {WALLET_ADDRESS} on pool {CURRENT_POOL}")
+    os.system(f"{MINER_CMD} -o {CURRENT_POOL} -u {WALLET_ADDRESS} -p x")  # Command to start mining
 
 if __name__ == "__main__":
-    main()
+    update_script()
+    fetch_new_pool()
+    start_mining()
