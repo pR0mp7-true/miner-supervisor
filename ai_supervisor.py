@@ -1,57 +1,65 @@
+# AI Supervisor Script for Termux
+# - Validates wallet before mining
+# - Restarts miner if it crashes
+# - Auto-updates itself from GitHub
+
 import os
-import sys
 import time
 import requests
-import json
 import subprocess
 
 # Configuration
-WALLET_ADDRESS = "47mV652Zp3XHKvemVSWLDG5dCqnWteamwhRRSuVSJ5peEUaPKMHkE3jhzsobGQvJE4SsoqPBUyw9C1fSQE8Y6FY216jnfHN"
-MINER_PATH = os.path.expanduser("~/miner-supervisor/xmrig-bin")
+WALLET_ADDRESS = "YOUR_MONERO_WALLET_ADDRESS"
+MINER_PATH = "/data/data/com.termux/files/home/miner-supervisor/xmrig-bin"
+MINER_COMMAND = f"{MINER_PATH} --donate-level 1 -o pool.minexmr.com:443 -u {WALLET_ADDRESS} -k --tls"
 GITHUB_SCRIPT_URL = "https://raw.githubusercontent.com/YOUR_GITHUB/ai_supervisor/main/ai_supervisor.py"
-AUTO_UPDATE = False  # Set to False to disable auto-restart
+UPDATE_INTERVAL = 3600  # Check for updates every 1 hour
 
-def validate_wallet():
-    print(f"Validating Wallet: '{WALLET_ADDRESS}'")
-    return WALLET_ADDRESS.startswith("4") or WALLET_ADDRESS.startswith("8")
 
-def check_miner():
-    return os.path.exists(MINER_PATH) and os.access(MINER_PATH, os.X_OK)
+def validate_wallet(wallet):
+    print(f"Validating Wallet: '{wallet}'")
+    return len(wallet) > 95  # Basic validation
 
-def start_miner():
-    if not check_miner():
-        print("[⚠️] Miner is missing or not executable!")
-        return
-    print("[✅] Starting miner...")
-    subprocess.Popen([MINER_PATH], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+def restart_miner():
+    print("[⚠️] Miner is down! Restarting...")
+    subprocess.Popen(MINER_COMMAND, shell=True)
+
 
 def update_script():
-    print("[🔄] Checking for script updates...")
     try:
+        print("[✅] Checking for script updates...")
         response = requests.get(GITHUB_SCRIPT_URL, timeout=5)
         if response.status_code == 200:
-            with open(__file__, "w") as f:
-                f.write(response.text)
+            with open(__file__, "w") as script_file:
+                script_file.write(response.text)
             print("[✅] AI Supervisor updated! Restarting...")
-            if AUTO_UPDATE:
-                os.execv(__file__, sys.argv)
+            os.execv(__file__, [])
         else:
             print("[⚠️] No updates found.")
     except Exception as e:
-        print(f"[❌] Update failed: {e}")
+        print(f"[⚠️] Update failed: {e}")
 
+
+# Main Execution
 if __name__ == "__main__":
-    if not validate_wallet():
-        print("[❌] Invalid Wallet Address!")
-        sys.exit(1)
-
-    print("[✅] Wallet is valid! Starting AI Supervisor...")
-
-    if AUTO_UPDATE:
-        update_script()
+    if validate_wallet(WALLET_ADDRESS):
+        print("[✅] Wallet is valid! Starting AI Supervisor...")
+    else:
+        print("[❌] Invalid wallet address!")
+        exit(1)
 
     while True:
-        if not check_miner():
-            print("[⚠️] Miner is down! Restarting...")
-            start_miner()
-        time.sleep(10)  # Check every 10 seconds
+        if not os.path.exists(MINER_PATH):
+            print("[⚠️] Miner binary missing! Please install XMRig.")
+            exit(1)
+
+        # Check if miner is running
+        miner_running = subprocess.run(["pgrep", "-f", "xmrig"], stdout=subprocess.PIPE).stdout
+        if not miner_running:
+            restart_miner()
+
+        # Check for updates
+        update_script()
+
+        time.sleep(UPDATE_INTERVAL)
