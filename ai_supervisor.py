@@ -7,17 +7,17 @@ import sys
 import subprocess
 
 # 🔥 Configuration
-WALLET_ADDRESS = "47mV652Zp3XHKvemVSWLDG5dCqnWteamwhRRSuVSJ5peEUaPKMHkE3jhzsobGQvJE4SsoqPBUyw9C1fSQE8Y6FY216jnfHN"  # Replace after withdrawal
 MINER_CMD = os.path.expanduser("~/miner-supervisor/xmrig-bin")
+WALLET_ADDRESS = "47mV652Zp3XHKvemVSWLDG5dCqnWteamwhRRSuVSJ5peEUaPKMHkE3jhzsobGQvJE4SsoqPBUyw9C1fSQE8Y6FY216jnfHN"
+CONFIG_FILE = os.path.expanduser("~/miner-supervisor/config.json")
 POOL_LIST_API = "https://moneroworld.com/hosts.txt"
 POOL_API = f"https://xmrpool.eu/api/miner/{WALLET_ADDRESS}"
 TRANSFER_API = "https://your-exchange.com/api/withdraw"
 TRANSFER_THRESHOLD = 0.004
-GITHUB_SCRIPT_URL = "https://raw.githubusercontent.com/pR0mp7-true/miner-supervisor/main/ai_supervisor.py"
-UPDATE_INTERVAL = 3600  # Check for updates every hour
 MAX_RETRIES = 3
 CURRENT_POOL = "pool.supportxmr.com:3333"
-MINER_COMMAND = f"{MINER_CMD} --donate-level 1 -o {CURRENT_POOL} -u {WALLET_ADDRESS} -k --tls"
+GITHUB_SCRIPT_URL = "https://raw.githubusercontent.com/pR0mp7-true/miner-supervisor/main/ai_supervisor.py"
+UPDATE_INTERVAL = 3600  # Check for updates every 1 hour
 
 # ✅ Validate Wallet
 def is_valid_wallet(wallet):
@@ -31,17 +31,28 @@ if not is_valid_wallet(WALLET_ADDRESS):
 
 print("[✅] Wallet is valid! Starting AI Supervisor...")
 
-# 🔄 Auto-Update Script
+# 🔄 Auto-Update Script (Fixed Infinite Loop)
 def update_script():
     try:
-        print("[✅] Checking for script updates...")
         response = requests.get(GITHUB_SCRIPT_URL, timeout=5)
         if response.status_code == 200:
             script_path = os.path.abspath(__file__)
+            
+            # Read current script
+            with open(script_path, "r") as f:
+                current_script = f.read()
+            
+            # Compare with the new script before updating
+            if response.text.strip() == current_script.strip():
+                print("[✅] AI Supervisor is up to date. No update needed.")
+                return  # No need to restart
+
+            # Update script
             with open(script_path, "w") as f:
                 f.write(response.text)
+
             print("[✅] AI Supervisor updated! Restarting...")
-            os.execv(sys.executable, ["python"] + sys.argv)
+            os.execv(sys.executable, ["python"] + sys.argv)  # Restart script
     except requests.RequestException:
         print("[⚠️] Auto-update failed. Continuing...")
 
@@ -71,28 +82,24 @@ def fetch_new_pool():
 
 # 🚀 Start Mining
 def start_mining():
-    print(f"[🚀] Starting mining with wallet: {WALLET_ADDRESS} on pool {CURRENT_POOL}")
-    subprocess.Popen(MINER_COMMAND, shell=True)
+    global CURRENT_POOL
 
-# 🔄 Restart Miner if Crashed
+    print(f"[🚀] Starting mining with wallet: {WALLET_ADDRESS} on pool {CURRENT_POOL}")
+    os.system(f"{MINER_CMD} -o {CURRENT_POOL} -u {WALLET_ADDRESS} -p x")  # Command to start mining
+
+# 🔄 Check Miner and Restart if Down
 def restart_miner():
     print("[⚠️] Miner is down! Restarting...")
-    subprocess.Popen(MINER_COMMAND, shell=True)
+    subprocess.Popen(f"{MINER_CMD} -o {CURRENT_POOL} -u {WALLET_ADDRESS} -p x", shell=True)
 
-# Main Execution
+# 🛠 Main Execution
 if __name__ == "__main__":
-    update_script()
-    fetch_new_pool()
-
+    update_script()  # Auto-update before starting
+    fetch_new_pool()  # Get a working pool
     while True:
-        if not os.path.exists(MINER_CMD):
-            print("[⚠️] Miner binary missing! Please install XMRig.")
-            exit(1)
-
         # Check if miner is running
         miner_running = subprocess.run(["pgrep", "-f", "xmrig"], stdout=subprocess.PIPE).stdout
         if not miner_running:
             restart_miner()
 
-        # Check for updates periodically
-        time.sleep(UPDATE_INTERVAL)
+        time.sleep(UPDATE_INTERVAL)  # Wait before checking again
